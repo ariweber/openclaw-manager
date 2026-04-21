@@ -1,26 +1,34 @@
 ---
 name: openclaw-manager
 description: Administer an OpenClaw installation — workspaces, skills, sub-agents, config files, and the gateway service. Use whenever the user wants to inspect, modify, or extend OpenClaw on this host.
-metadata: {"skillVersion": "1.1", "lastVerifiedOpenClawVersion": "unset"}
+metadata: {"skillVersion": "1.2", "lastVerifiedOpenClawVersion": "unset"}
 ---
 
 # OpenClaw Manager
 
-You are operating on a machine that has **OpenClaw** installed. OpenClaw is a file-driven AI agent platform that runs as a local Node.js gateway on port `18789`. Every agent is a directory of Markdown files; every skill is a directory with a `SKILL.md`; every tool is a documented capability surfaced by the gateway.
+You are operating on a machine that has **OpenClaw** installed — a file-driven AI agent platform where every agent is a directory of Markdown files, every skill is a directory with a `SKILL.md`, and every tool is a documented capability surfaced by the gateway.
 
-Your job with this skill loaded: **act as a careful administrator of the OpenClaw installation**. Read before you write. Never invent file paths or command names — OpenClaw has specific conventions and breaking them silently corrupts agents.
+**Common defaults on a typical install** (verify on the live host before acting — none are universal):
+- The gateway is a local Node.js process listening on port `18789` (configurable via `openclaw.json` or `--port`).
+- Config and state live under `~/.openclaw/`; the master config is `~/.openclaw/openclaw.json` (location can be overridden by the install's env/config).
+- On Linux the service usually runs as a user systemd unit named `openclaw-gateway`. On macOS it's typically a launchd agent; on Windows a scheduled task; it also ships as a Docker container and can run in the foreground (`openclaw gateway …`).
 
-## Trigger phrases
+Your job with this skill loaded: **act as a careful administrator of this specific OpenClaw installation**. Read before you write. Do not guess file paths, service names, or commands — verify against `openclaw <cmd> --help` and the live filesystem for each action.
 
-Activate this skill when the conversation mentions any of:
+## When to activate this skill
 
-- OpenClaw, אופןקלאו, "the bot on the server"
-- Paths: `~/.openclaw`, `~/.agents`, `<workspace>/skills`, `openclaw.json`, `models.json`
-- Workspace files: `SOUL.md`, `IDENTITY.md`, `USER.md`, `BOOTSTRAP.md`, `AGENTS.md`, `TOOLS.md`, `HEARTBEAT.md`
-- Commands: `openclaw serve`, `openclaw configure`, `openclaw skills`, `openclaw doctor`, `/subagents`, `sessions_spawn`
-- Gateway port `18789`
-- Intents: "add a tool to the agent", "give the agent a new skill", "edit the agent's personality", "create a sub-agent", "fix the bot"
+Engage admin mode when the user is asking you to **inspect, modify, troubleshoot, or extend** an OpenClaw install — not for every mention of OpenClaw.
+
+Typical triggers:
+
+- Editing a workspace file (`SOUL.md`, `IDENTITY.md`, `USER.md`, `AGENTS.md`, `TOOLS.md`, `BOOTSTRAP.md`, `HEARTBEAT.md`, `MEMORY.md`)
+- Editing `openclaw.json`, `models.json`, or `auth-profiles.json`
+- Authoring, installing, or debugging a skill (including ClawHub installs)
+- Adding/removing agents or sub-agents; changing `maxSpawnDepth`, tool allow/deny lists, channel bindings
+- Troubleshooting the gateway — service not responding, channel not binding, reloads not landing, transcripts to read
 - Hebrew equivalents: להוסיף סוכן, לערוך את הסוכן, לבנות סקיל, תקן את הבוט, לשנות את האישיות של הסוכן
+
+Do **not** enter full admin mode for pure conceptual questions ("what is OpenClaw?", "what does SOUL.md do in general?"). A direct answer from the references is enough; skip pre-flight.
 
 ## The five things to get right
 
@@ -30,50 +38,70 @@ Activate this skill when the conversation mentions any of:
 
 3. **Hot reload is real — restarts are usually wrong.** OpenClaw watches config and workspace files and reloads most changes automatically. Do not run `systemctl restart` or `openclaw gateway --force` unless you have a concrete reason. See `references/cli-and-reload.md`.
 
-4. **Session tools are depth-gated.** Only orchestrator agents (depth 1 with `maxSpawnDepth >= 2`) can spawn sub-agents. Leaf agents cannot. Do not assume `sessions_spawn` is available. See `references/agents-and-subagents.md`.
+4. **Session tools are depth-gated.** Only orchestrator agents (depth 1 with `maxSpawnDepth >= 2`) can spawn sub-agents. Non-spawning and depth-2 agents cannot. Do not assume `sessions_spawn` is available. See `references/agents-and-subagents.md`.
 
 5. **Secrets are everywhere and must stay there.** `openclaw.json`, `auth-profiles.json`, and `models.json` contain API keys and bot tokens. Never print them, never commit them, never include them in artifacts or messages. See `references/safety-rules.md`.
 
-## Before any OpenClaw action — the mandatory pre-flight
+## Pre-flight — adaptive, not ceremonial
 
-Run this discovery sequence the first time in a session and whenever you're unsure what you're looking at. **Skip it only for pure read/explain questions** ("what does SOUL.md do?") — anything that will write, restart, or install requires the full sequence.
+Match the depth of discovery to the blast radius of the task.
+
+**Tier 0 — read/explain only.** No discovery. Answer from the references, do not touch the host.
+Examples: "what does SOUL.md do?", "explain skill precedence".
+
+**Tier 1 — targeted edit with a known path.** Minimal verification only.
+Examples: editing a specific Markdown file the user named, bumping one field in a config the user pointed at.
+Before the edit, confirm: the target file exists at the given path; if it's JSON, the current contents parse; if it's a workspace Markdown, the workspace is registered in the install's `openclaw.json`. No service probing, no filesystem-wide scans.
+
+**Tier 2 — runtime, service, install, or "it's broken".** Run the discovery block below before risky changes.
+Examples: restarting the gateway, installing a skill, rotating auth, adding an agent, debugging silent bots.
+
+The commands below are **examples for a common Linux / user-systemd install**. Adapt them to the host: launchd on macOS, scheduled task on Windows, `docker` for containerized installs, or `ps` / `openclaw gateway ... --verbose` for foreground runs. Do not assume the exact paths, unit names, or workspace names — verify each time.
 
 ```bash
-# 1. Which OpenClaw version — commands and flags change between versions.
-#    Compare against this skill's frontmatter metadata.lastVerifiedOpenClawVersion.
-#    If anything below contradicts `openclaw <cmd> --help`, trust the help.
+# 1. Version — CLI changes between OpenClaw versions. If anything below disagrees with
+#    `openclaw <cmd> --help` on this host, trust the help.
 openclaw --version
 
-# 2. Find the OpenClaw config and state directories
+# 2. Config and state (defaults shown; the install may override via openclaw.json or env).
 ls -la ~/.openclaw/ 2>/dev/null
 ls -la ~/.agents/ 2>/dev/null
-echo "OPENCLAW_CONFIG_PATH=$OPENCLAW_CONFIG_PATH"
-echo "OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR"
 
-# 3. Check the service (try user scope first — OpenClaw installs as a user service by default)
+# 3. Service — common default is a user systemd unit named `openclaw-gateway`. Verify:
 systemctl --user status openclaw-gateway 2>/dev/null | head -20
-# Fall back to system scope only if user scope has nothing
-systemctl status openclaw-gateway 2>/dev/null | head -20
+systemctl status openclaw-gateway 2>/dev/null | head -20   # system-scope fallback
+# On macOS:   launchctl list | grep -i openclaw
+# On Windows: schtasks /query /fo LIST | findstr /i openclaw
+# In Docker:  docker ps --format '{{.Names}} {{.Image}}' | grep -i openclaw
+# Foreground: ps -eo pid,user,cmd | grep -i openclaw | grep -v grep
 
-# 4. See what's actually running
+# 4. Live process (whatever the install mode)
 ps -eo pid,user,cmd | grep -i openclaw | grep -v grep
 
-# 5. List the workspaces on this machine
-find ~ -maxdepth 5 -name "workspace-*" -type d 2>/dev/null
-find ~ -maxdepth 5 -name "SOUL.md" 2>/dev/null | head -20
+# 5. Workspaces — prefer the config as the source of truth over filesystem guessing.
+python3 - <<'PY' 2>/dev/null
+import json, os
+cfg = os.path.expanduser("~/.openclaw/openclaw.json")
+if os.path.exists(cfg):
+    d = json.load(open(cfg))
+    for name, agent in d.get("agents", {}).items():
+        print(name, "→", agent.get("workspace", "<unset>"))
+PY
+# Fallback only if the config path differs on this install:
+find ~ -maxdepth 6 -name "SOUL.md" 2>/dev/null | head
 ```
 
-Do not proceed until you know (a) the OpenClaw version, (b) where the config lives, (c) which user owns the running process, (d) which workspaces exist.
+Before a risky change, confirm on this host: version, config location, which user owns the running process, and the workspace path of the agent you're about to touch. If any is ambiguous, resolve it first — do not push forward in parallel with the change.
 
 ## Version compatibility
 
-This skill has a `metadata.lastVerifiedOpenClawVersion` field in its frontmatter. Treat it as a soft contract:
+`metadata.lastVerifiedOpenClawVersion` in the frontmatter is a soft hint, not an authority:
 
-- If `lastVerifiedOpenClawVersion` is `unset`, no one has formally tested this skill against a specific OpenClaw build on your host. Proceed, but prefer `openclaw <cmd> --help` over the commands in these references whenever they disagree.
-- If the running version's major component matches `lastVerifiedOpenClawVersion`, you can trust the reference commands verbatim.
-- If the major version differs (e.g., running `2.x` against a skill verified on `1.x`), flag this to the operator before making changes. CLI renames and flag changes between majors are the most common source of silent failure.
+- **`unset`**: no formal verification on this host. Treat the live CLI and the current `openclaw.json` schema as ground truth — `openclaw <cmd> --help` overrides anything in these references when they disagree.
+- **Matches the running major version**: the reference commands can be used as written, but still sanity-check paths and unit names on the host.
+- **Differs materially from the running version**: warn the operator before any risky change. Renamed commands and reshaped flags are the most common silent-failure pattern across majors.
 
-**Maintainer note**: after you test this skill against a specific OpenClaw version and confirm all referenced commands work, update the frontmatter to that version.
+Never claim high confidence in a command when this skill's verified version differs from what's installed.
 
 ## Decision tree — what are you being asked to do?
 
@@ -105,6 +133,11 @@ When in doubt on any of these, read `safety-rules.md`. Do not paraphrase from me
 
 ## Working style
 
-Be terse. OpenClaw sessions are token-budgeted — the user pays for every line you write and every file you read. Follow the pattern the OpenClaw docs themselves recommend: read the specific reference you need, not the whole set; use scripts over prose for repetitive discovery; return `{success, path}` style minimal summaries after write operations.
+Be terse. Every open reference and every file read costs tokens on each turn.
 
-When you're asked to make a change, state what you're about to change, do it, then show a three-line diff-style summary — not the whole file.
+- **Read only the specific reference the decision tree points to.** Not the whole set.
+- **Verify before edit.** Resolve the actual file path, the actual config schema, and the actual service name on this host first. Assumed defaults are guesses until confirmed.
+- **Prefer targeted inspection over filesystem-wide scans.** `cat <known-path>` beats `find ~`; `openclaw agents list` beats grepping for `SOUL.md`.
+- **After a write, summarize in compact diff form** — path + what changed + reload status. Do not dump the full file unless asked.
+- **Do not restart by reflex.** Most config and all workspace Markdown edits hot-reload. Restart only with a named cause (port change, token rotation, gateway confirmed wedged via logs).
+- **When unsure, ask — don't guess a destructive path.** An extra clarifying question is cheaper than a corrupted workspace.
