@@ -1,6 +1,10 @@
 # openclaw-manager
 
-A skill that teaches an AI agent how to **safely administer an [OpenClaw](https://github.com/ariweber/openclaw) installation** — editing agent workspaces, authoring skills, configuring sub-agents, managing `openclaw.json`, and troubleshooting the gateway service.
+A skill **primarily intended for [Claude Code](https://claude.com/claude-code)** — it teaches Claude Code how to **safely perform administrative operations on an [OpenClaw](https://github.com/ariweber/openclaw) installation**: editing agent workspaces, authoring skills, configuring sub-agents, managing `openclaw.json`, and troubleshooting the gateway service.
+
+The typical use case: you `ssh` into a server that has OpenClaw installed, start Claude Code in the terminal, and this skill activates automatically on any mention of OpenClaw, `~/.openclaw`, `SOUL.md`, or equivalent Hebrew phrases. From that point on, Claude Code follows the OpenClaw conventions encoded here instead of guessing file paths, command names, or reload semantics.
+
+The skill is also compatible with any other AgentSkills-spec runtime (OpenClaw agents themselves, etc.), but Claude Code is the target.
 
 OpenClaw is a file-driven AI agent platform that runs as a local Node.js gateway on port `18789`. Every agent is a directory of Markdown files (`SOUL.md`, `IDENTITY.md`, `USER.md`, …), every skill is a directory with a `SKILL.md`, and every tool is a documented capability surfaced by the gateway. Because state lives in files, a careless edit can silently corrupt an agent — this skill encodes the conventions an administrator must follow.
 
@@ -30,17 +34,30 @@ The skill ships with six reference documents covering every area of OpenClaw adm
 
 ## Installation
 
-### Option 1 — Install into an OpenClaw workspace (recommended)
+### Option 1 — Claude Code (primary intended use)
 
-From the machine where OpenClaw is installed:
+On your workstation — or, more commonly, over SSH on the OpenClaw host itself:
 
 ```bash
-# Download the packaged skill
-curl -L -o openclaw-manager.zip \
-  https://github.com/ariweber/openclaw-manager/raw/main/openclaw-manager.zip
+mkdir -p ~/.claude/skills
+curl -L https://github.com/ariweber/openclaw-manager/raw/main/openclaw-manager.zip \
+  -o /tmp/openclaw-manager.zip
+unzip /tmp/openclaw-manager.zip -d ~/.claude/skills/
+```
 
-# Extract into your workspace's skills directory
-unzip openclaw-manager.zip -d <workspace>/skills/
+Restart Claude Code. The skill auto-triggers on any mention of OpenClaw, `~/.openclaw`, `SOUL.md`, `openclaw serve`, gateway port `18789`, or their Hebrew equivalents (אופןקלאו, להוסיף סוכן, תקן את הבוט, etc.).
+
+This is the intended workflow: `ssh` into the server, run `claude` in the terminal, and Claude Code handles the OpenClaw administration with this skill loaded.
+
+### Option 2 — Install into an OpenClaw workspace (for OpenClaw agents to use)
+
+If you want an OpenClaw agent itself (not Claude Code) to have access to this knowledge:
+
+```bash
+# From the machine where OpenClaw is installed
+curl -L https://github.com/ariweber/openclaw-manager/raw/main/openclaw-manager.zip \
+  -o /tmp/openclaw-manager.zip
+unzip /tmp/openclaw-manager.zip -d <workspace>/skills/
 
 # Confirm OpenClaw picked it up
 openclaw skills list | grep openclaw-manager
@@ -48,36 +65,28 @@ openclaw skills list | grep openclaw-manager
 
 Replace `<workspace>` with the workspace path from `openclaw.json` (e.g. `~/.openclaw/workspace` for a single-agent install, or `/home/<user>/workspaces/<name>` for a per-tenant setup).
 
-No restart needed — OpenClaw hot-reloads skill directories. If the skill doesn't appear, run `openclaw skills list` and check the output for reasons it was rejected (usually a `requires` mismatch).
+No restart needed — OpenClaw hot-reloads skill directories. If the skill doesn't appear, check `openclaw skills list` for rejection reasons (usually a `requires` mismatch).
 
-### Option 2 — Install globally for all workspaces on the host
+### Option 3 — Install globally for all OpenClaw workspaces on the host
 
 ```bash
 mkdir -p ~/.openclaw/skills
-unzip openclaw-manager.zip -d ~/.openclaw/skills/
+unzip /tmp/openclaw-manager.zip -d ~/.openclaw/skills/
 ```
 
-Any workspace on this host that does not have a higher-precedence copy will load this one.
-
-### Option 3 — Use as a Claude Code skill
-
-If you want Claude Code (the CLI) to load this skill when you work on OpenClaw hosts:
-
-```bash
-mkdir -p ~/.claude/skills
-unzip openclaw-manager.zip -d ~/.claude/skills/
-```
-
-Restart Claude Code. The skill auto-triggers on any mention of OpenClaw, `~/.openclaw`, `SOUL.md`, `openclaw serve`, gateway port `18789`, or their Hebrew equivalents (אופןקלאו, להוסיף סוכן, etc.).
+Any OpenClaw workspace on this host that does not have a higher-precedence copy will load this one.
 
 ### Option 4 — Install from source (this repo directly)
 
 ```bash
 git clone https://github.com/ariweber/openclaw-manager.git
+# For Claude Code:
+cp -r openclaw-manager ~/.claude/skills/
+# Or for an OpenClaw workspace:
 cp -r openclaw-manager <workspace>/skills/
 ```
 
-The repo layout is already a valid skill directory — `SKILL.md` at the root plus a `references/` subdirectory. The loose `.md` files at the repo root are the same reference files; the `references/` layout inside the zip is what OpenClaw expects.
+The repo layout is already a valid skill directory — `SKILL.md` at the root plus a `references/` subdirectory. The loose `.md` files at the repo root are the same reference files; the `references/` layout inside the zip is what Claude Code / OpenClaw expects.
 
 ## Verifying it loaded
 
