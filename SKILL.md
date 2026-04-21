@@ -79,10 +79,12 @@ This skill has a `metadata.lastVerifiedOpenClawVersion` field in its frontmatter
 
 | User intent | Go to |
 |-------------|-------|
+| **"Set up a new bot from scratch"** (customer ask) | **`references/walkthrough.md` — START HERE, Phase 0 is mandatory** |
 | "Edit the agent's personality / instructions / identity" | `references/workspace-structure.md` → section on SOUL.md / IDENTITY.md |
 | "Add a skill / teach the agent to do X" | `references/skills-authoring.md` |
 | "Create a new agent / workspace / sub-agent" | `references/agents-and-subagents.md` |
 | "Change the model / add a provider / fix OpenRouter" | `references/config-files.md` |
+| "The bot is costing too much / switch to a cheaper model / check cache" | `references/cost-and-models.md` |
 | "Restart the bot / fix the gateway / service won't start" | `references/cli-and-reload.md` |
 | "The bot leaked data / said the wrong thing / has wrong permissions" | `references/safety-rules.md` + `references/agents-and-subagents.md` |
 | "The agent sends weird messages after finishing a task" | `references/agents-and-subagents.md` → NO_REPLY convention |

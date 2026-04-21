@@ -19,12 +19,14 @@ The skill ships with six reference documents covering every area of OpenClaw adm
 | File | Covers |
 |------|--------|
 | `SKILL.md` | Entry point — pre-flight discovery, decision tree, non-negotiable rules. |
+| `references/walkthrough.md` | Happy-path setup for a new customer bot, Telegram + WhatsApp, interactive (agent asks the operator). |
 | `references/workspace-structure.md` | The seven core Markdown files and what belongs in each. |
 | `references/skills-authoring.md` | Writing, installing, and debugging skills; ClawHub workflow. |
 | `references/cli-and-reload.md` | `openclaw` CLI, systemd service, hot-reload semantics, log inspection. |
 | `references/agents-and-subagents.md` | Agent config, sub-agent spawning, depth limits, trust boundaries. |
 | `references/config-files.md` | `openclaw.json`, `models.json`, `auth-profiles.json` — structure and safe edits. |
 | `references/safety-rules.md` | Destructive-op guards, secret handling, tenancy isolation. |
+| `references/cost-and-models.md` | Where cost is visible, model picker by task type, cache-hit rate, cost-investigation checklist. |
 
 ## Installation
 
