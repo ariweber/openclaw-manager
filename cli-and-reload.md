@@ -94,8 +94,8 @@ Only run this on a fresh install. On a working system, `onboard` can overwrite e
 openclaw skills list                 # show all loaded skills with sources and eligibility
 openclaw skills install <slug>       # install from ClawHub into <workspace>/skills
 openclaw skills install <slug> --dangerous   # bypass the safety scanner (rarely appropriate)
-openclaw skills show <n>          # show the SKILL.md and frontmatter for one skill
-openclaw skills remove <n>        # remove a skill from the workspace
+openclaw skills show <name>       # show the SKILL.md and frontmatter for one skill
+openclaw skills remove <name>     # remove a skill from the workspace
 ```
 
 `openclaw skills list` is the single most useful diagnostic. It shows:

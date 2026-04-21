@@ -1,6 +1,6 @@
 ---
 name: openclaw-manager
-description: Use this skill WHENEVER working on a server or machine that has OpenClaw installed and the user wants to inspect, modify, or extend the OpenClaw installation — including editing agent workspaces (SOUL.md, IDENTITY.md, USER.md, BOOTSTRAP.md, AGENTS.md, TOOLS.md, HEARTBEAT.md), authoring or installing skills, configuring sub-agents, modifying `openclaw.json` or `models.json`, troubleshooting the gateway/systemd service, or spawning sessions. Trigger on any mention of OpenClaw, אופןקלאו, "the bot on the server", `~/.openclaw`, `~/.agents`, `<workspace>/skills`, `openclaw.json`, SOUL.md, BOOTSTRAP.md, `openclaw serve`, `openclaw configure`, `openclaw skills`, `/subagents`, `sessions_spawn`, or gateway port 18789. Also trigger when the user asks to "add a tool to the agent", "give the agent a new skill", "edit the agent's personality", "create a sub-agent", "fix the bot", or any Hebrew equivalent (להוסיף סוכן, לערוך את הסוכן, לבנות סקיל, תקן את הבוט). This skill teaches correct OpenClaw conventions — do not guess file locations, reload semantics, or tool names; consult this skill's references first.
+description: Administer an OpenClaw installation — workspaces, skills, sub-agents, config files, and the gateway service. Use whenever the user wants to inspect, modify, or extend OpenClaw on this host.
 ---
 
 # OpenClaw Manager
@@ -8,6 +8,18 @@ description: Use this skill WHENEVER working on a server or machine that has Ope
 You are operating on a machine that has **OpenClaw** installed. OpenClaw is a file-driven AI agent platform that runs as a local Node.js gateway on port `18789`. Every agent is a directory of Markdown files; every skill is a directory with a `SKILL.md`; every tool is a documented capability surfaced by the gateway.
 
 Your job with this skill loaded: **act as a careful administrator of the OpenClaw installation**. Read before you write. Never invent file paths or command names — OpenClaw has specific conventions and breaking them silently corrupts agents.
+
+## Trigger phrases
+
+Activate this skill when the conversation mentions any of:
+
+- OpenClaw, אופןקלאו, "the bot on the server"
+- Paths: `~/.openclaw`, `~/.agents`, `<workspace>/skills`, `openclaw.json`, `models.json`
+- Workspace files: `SOUL.md`, `IDENTITY.md`, `USER.md`, `BOOTSTRAP.md`, `AGENTS.md`, `TOOLS.md`, `HEARTBEAT.md`
+- Commands: `openclaw serve`, `openclaw configure`, `openclaw skills`, `openclaw doctor`, `/subagents`, `sessions_spawn`
+- Gateway port `18789`
+- Intents: "add a tool to the agent", "give the agent a new skill", "edit the agent's personality", "create a sub-agent", "fix the bot"
+- Hebrew equivalents: להוסיף סוכן, לערוך את הסוכן, לבנות סקיל, תקן את הבוט, לשנות את האישיות של הסוכן
 
 ## The five things to get right
 
@@ -23,29 +35,33 @@ Your job with this skill loaded: **act as a careful administrator of the OpenCla
 
 ## Before any OpenClaw action — the mandatory pre-flight
 
-Run this discovery sequence the first time in a session and whenever you're unsure what you're looking at:
+Run this discovery sequence the first time in a session and whenever you're unsure what you're looking at. **Skip it only for pure read/explain questions** ("what does SOUL.md do?") — anything that will write, restart, or install requires the full sequence.
 
 ```bash
-# 1. Find the OpenClaw config and state directories
+# 1. Which OpenClaw version — commands and flags change between versions.
+#    If anything below contradicts `openclaw <cmd> --help`, trust the help.
+openclaw --version
+
+# 2. Find the OpenClaw config and state directories
 ls -la ~/.openclaw/ 2>/dev/null
 ls -la ~/.agents/ 2>/dev/null
 echo "OPENCLAW_CONFIG_PATH=$OPENCLAW_CONFIG_PATH"
 echo "OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR"
 
-# 2. Check the service (try user scope first — OpenClaw installs as a user service by default)
+# 3. Check the service (try user scope first — OpenClaw installs as a user service by default)
 systemctl --user status openclaw-gateway 2>/dev/null | head -20
 # Fall back to system scope only if user scope has nothing
 systemctl status openclaw-gateway 2>/dev/null | head -20
 
-# 3. See what's actually running
+# 4. See what's actually running
 ps -eo pid,user,cmd | grep -i openclaw | grep -v grep
 
-# 4. List the workspaces on this machine
+# 5. List the workspaces on this machine
 find ~ -maxdepth 5 -name "workspace-*" -type d 2>/dev/null
 find ~ -maxdepth 5 -name "SOUL.md" 2>/dev/null | head -20
 ```
 
-Do not proceed until you know (a) where the config lives, (b) which user owns the running process, (c) which workspaces exist.
+Do not proceed until you know (a) the OpenClaw version, (b) where the config lives, (c) which user owns the running process, (d) which workspaces exist.
 
 ## Decision tree — what are you being asked to do?
 
@@ -57,6 +73,7 @@ Do not proceed until you know (a) where the config lives, (b) which user owns th
 | "Change the model / add a provider / fix OpenRouter" | `references/config-files.md` |
 | "Restart the bot / fix the gateway / service won't start" | `references/cli-and-reload.md` |
 | "The bot leaked data / said the wrong thing / has wrong permissions" | `references/safety-rules.md` + `references/agents-and-subagents.md` |
+| "The agent sends weird messages after finishing a task" | `references/agents-and-subagents.md` → NO_REPLY convention |
 | "Install a community skill from ClawHub" | `references/skills-authoring.md` → Installing |
 | "Debug — find out what the agent did / read the transcript" | `references/cli-and-reload.md` → Sessions & logs |
 

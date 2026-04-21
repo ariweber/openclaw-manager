@@ -91,7 +91,7 @@ OpenClaw strictly gates session tools by depth:
 | Depth | Role | Has `sessions_spawn`? | Other session tools? |
 |-------|------|----------------------|---------------------|
 | 1 (orchestrator, `maxSpawnDepth >= 2`) | Main agent with permission to spawn | ✅ Yes | Yes: `sessions_list`, `sessions_history`, `subagents` |
-| 1 (leaf, `maxSpawnDepth == 1`) | Main agent, no spawning | ❌ No | No session tools |
+| 1 (non-spawning, `maxSpawnDepth == 1`) | Main agent without spawn permission | ❌ No | No session tools |
 | 2 (worker) | Sub-agent | ❌ No (always denied at depth 2) | No |
 
 **Practical implication**: Before writing a SOUL.md that tells the agent "spawn a sub-agent to research X", verify the agent is configured as an orchestrator. Otherwise the tool call will be denied and the agent will thrash.
