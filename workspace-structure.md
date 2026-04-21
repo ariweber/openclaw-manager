@@ -34,6 +34,12 @@ Strict separation matters. Putting persona in SOUL.md or rules in IDENTITY.md ma
 - **Purpose**: A one-time script the agent runs on its very first turn. Used to fetch secrets from a vault, announce itself, register with a central control plane, etc.
 - **Lifecycle**: The agent is expected to delete this file after successfully executing it. If you see a BOOTSTRAP.md in a long-running workspace, something went wrong on first start — investigate before deleting.
 - **Edit when**: Setting up a new workspace, rotating credentials that need to be re-fetched, or bootstrapping a restored workspace.
+- **Failure recovery** (BOOTSTRAP.md still present on a workspace you thought was live):
+    1. Do NOT delete it. First read it — it may reveal which external step didn't land (vault fetch, control-plane register).
+    2. Read the most recent session transcript under `<workspace>/sessions/`. Find the agent's first turn; look for the error.
+    3. Common causes: (a) the vault env var wasn't set in the systemd unit, (b) the control plane was unreachable at spawn time, (c) the bootstrap instructed a tool the agent didn't have.
+    4. Fix the root cause, then either restart the agent (`openclaw agents restart <name>`) so it retries on next turn, or run the bootstrap steps manually and delete the file by hand.
+    5. Never leave a broken BOOTSTRAP.md in place — the agent will retry it on every session restart and can loop.
 
 ### IDENTITY.md
 - **Purpose**: Who the agent *is*. Name, voice, emoji usage, greeting style, language register. Short — usually under 40 lines.
@@ -62,8 +68,14 @@ Strict separation matters. Putting persona in SOUL.md or rules in IDENTITY.md ma
 - **Security**: URLs and hostnames are fine here. Keys and tokens are not.
 
 ### HEARTBEAT.md
-- **Purpose**: Periodic/scheduled behavior. "Every morning at 07:00 summarize yesterday's tasks", "if no activity for 24h, send a check-in".
-- **Edit when**: Adding/removing scheduled behavior.
+- **Purpose**: Periodic/scheduled behavior, expressed in natural language. "Every morning at 07:00 summarize yesterday's tasks", "if no activity for 24h, send a check-in".
+- **How it actually runs**: HEARTBEAT.md is **not** a cron file. OpenClaw does not (by itself) parse schedules and fire jobs. For the instructions in HEARTBEAT.md to execute, one of the following must be true on your install:
+    1. A bundled `heartbeat` skill or scheduler component is installed and enabled — verify with `openclaw skills list | grep -i heartbeat` and by checking `commands` / `skills` blocks in `openclaw.json`.
+    2. An external cron/systemd-timer on the host posts a message into the agent's channel on schedule, and the agent reads HEARTBEAT.md at that point to decide what to do.
+    3. A `sessions_spawn` orchestration exists that reads the file and wakes the agent periodically.
+  
+  If none of the above is present, HEARTBEAT.md is inert — the agent will read it at session start but nothing triggers it between sessions. Do not promise the operator "the agent will do X every morning" until you've confirmed the scheduling mechanism exists on this install.
+- **Edit when**: Adding/removing scheduled behavior — AND you've confirmed the scheduler exists.
 
 ## Multiple agents on one machine
 
@@ -100,4 +112,4 @@ If a session is misbehaving, the correct fix is almost always to *end the sessio
 - **Inventing a file** because it "seems like it should exist". If `HEARTBEAT.md` isn't there, the agent doesn't do periodic tasks. Don't create one unless the user asks.
 - **Putting prohibitions in IDENTITY.md** — they belong in SOUL.md. IDENTITY is about voice and presentation, not behavior.
 - **Letting SOUL.md grow past 500 lines.** Split into references and point to them from SOUL. A 2000-line SOUL costs tokens on every turn.
-- **Forgetting `company_id` / tenancy fields** when the agent interacts with a multi-tenant database. These are usually defined in TOOLS.md or in a dedicated `TENANCY.md`. Missing them = data leaks between customers.
+- **Forgetting `company_id` / tenancy fields** when the agent interacts with a multi-tenant database. These are not a canonical OpenClaw file — by convention they live in a `## Tenancy` section inside TOOLS.md, or in a per-install `TENANCY.md` if the team adopted one. Whichever location your install uses, missing them = data leaks between customers. Audit on every SOUL.md edit that touches DB queries.

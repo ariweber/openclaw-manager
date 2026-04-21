@@ -1,6 +1,7 @@
 ---
 name: openclaw-manager
 description: Administer an OpenClaw installation — workspaces, skills, sub-agents, config files, and the gateway service. Use whenever the user wants to inspect, modify, or extend OpenClaw on this host.
+metadata: {"skillVersion": "1.1", "lastVerifiedOpenClawVersion": "unset"}
 ---
 
 # OpenClaw Manager
@@ -39,6 +40,7 @@ Run this discovery sequence the first time in a session and whenever you're unsu
 
 ```bash
 # 1. Which OpenClaw version — commands and flags change between versions.
+#    Compare against this skill's frontmatter metadata.lastVerifiedOpenClawVersion.
 #    If anything below contradicts `openclaw <cmd> --help`, trust the help.
 openclaw --version
 
@@ -63,6 +65,16 @@ find ~ -maxdepth 5 -name "SOUL.md" 2>/dev/null | head -20
 
 Do not proceed until you know (a) the OpenClaw version, (b) where the config lives, (c) which user owns the running process, (d) which workspaces exist.
 
+## Version compatibility
+
+This skill has a `metadata.lastVerifiedOpenClawVersion` field in its frontmatter. Treat it as a soft contract:
+
+- If `lastVerifiedOpenClawVersion` is `unset`, no one has formally tested this skill against a specific OpenClaw build on your host. Proceed, but prefer `openclaw <cmd> --help` over the commands in these references whenever they disagree.
+- If the running version's major component matches `lastVerifiedOpenClawVersion`, you can trust the reference commands verbatim.
+- If the major version differs (e.g., running `2.x` against a skill verified on `1.x`), flag this to the operator before making changes. CLI renames and flag changes between majors are the most common source of silent failure.
+
+**Maintainer note**: after you test this skill against a specific OpenClaw version and confirm all referenced commands work, update the frontmatter to that version.
+
 ## Decision tree — what are you being asked to do?
 
 | User intent | Go to |
@@ -79,11 +91,15 @@ Do not proceed until you know (a) the OpenClaw version, (b) where the config liv
 
 ## Non-negotiable rules
 
-- **Never `rm -rf` anything under `~/.openclaw/`, `~/.agents/`, or a workspace directory** without first moving it to a backup path (`mv foo foo.bak.$(date +%s)`). OpenClaw state is irreplaceable — sessions, memory, and skill installs all live there.
-- **Never edit `openclaw.json` in place without a backup.** Always `cp openclaw.json openclaw.json.bak.$(date +%s)` first.
-- **Never put secrets into a SKILL.md, SOUL.md, or any Markdown file.** Secrets belong in `auth-profiles.json` (chmod 600) or in `skills.entries.*.env` / `.apiKey` in `openclaw.json`.
-- **Never commit `~/.openclaw/` or a workspace to git without a `.gitignore` that excludes `auth-profiles.json`, `*.token`, `sessions/`, and `.env`.**
-- **Never claim a restart is needed without testing hot reload first.** Most config and all workspace Markdown edits are picked up automatically.
+The full rationale and exact procedures live in `references/safety-rules.md`. Do not cross these lines:
+
+- **Backup before editing state.** `openclaw.json`, `models.json`, any workspace Markdown, any skill directory — timestamped backup first. No exceptions.
+- **No secrets in Markdown.** They go in `auth-profiles.json` (chmod 600) or env vars referenced by name from `openclaw.json`.
+- **No `rm -rf` inside `~/.openclaw/`, `~/.agents/`, or a workspace.** Rename to `.deleted-$(date +%s)` and let it sit for a week first.
+- **No `git init` without a `.gitignore`** that excludes `auth-profiles.json`, `*.token`, `sessions/`, `.env`.
+- **No restart reflex.** Try hot reload first. Restart only with a concrete reason — see `references/cli-and-reload.md`.
+
+When in doubt on any of these, read `safety-rules.md`. Do not paraphrase from memory.
 
 ## Working style
 
